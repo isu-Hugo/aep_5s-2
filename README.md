@@ -35,7 +35,7 @@ Antes de começar, certifique-se de ter instalado em sua máquina:
 ---
 
 ### 1️⃣ Passo 1: Subir o Banco de Dados (Docker)
-Navegue até a raiz do projeto back-end (onde está localizado o arquivo `docker-compose.yml`) e execute o comando abaixo no terminal para subir o container do PostgreSQL em segundo plano:
+Navegue até a raiz do projeto back-end (onde está localizado o arquivo `compose.yml`) e execute o comando abaixo no terminal para subir o container do PostgreSQL em segundo plano:
 
 ```bash ```
 docker compose up -d
