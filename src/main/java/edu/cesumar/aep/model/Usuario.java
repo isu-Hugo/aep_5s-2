@@ -1,22 +1,26 @@
 package edu.cesumar.aep.model;
 
 import jakarta.persistence.*;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
 
 @Entity
-@Table(name = "tbl_user")
-@Getter
-@Setter
-public class UsuarioModel {
-
+@Table(name = "usuario")
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class Usuario {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private Long idUsuario;
     private String nome;
-    private String senha;
-    private Integer pontos;
+    private int pontosAcumulados;
 
-
-
+    public void adicionarPontos(int pontos) {
+        if (pontos < 0) {
+            throw new IllegalArgumentException("Não é possível adicionar pontos negativos");
+        }
+        this.pontosAcumulados += pontos;
+    }
 }

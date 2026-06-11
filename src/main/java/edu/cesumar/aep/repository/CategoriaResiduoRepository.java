@@ -1,4 +1,7 @@
 package edu.cesumar.aep.repository;
 
-public interface CategoriaResiduoRepository {
+import edu.cesumar.aep.model.CategoriaResiduo;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface CategoriaResiduoRepository extends JpaRepository<CategoriaResiduo, Long> {
 }
