@@ -46,8 +46,6 @@ docker compose up -d
 3. Execute os **Testes Unitários** para garantir a integridade das regras de negócio (Clique com o botão direito na pasta de testes -> *Run All Tests* ou execute `mvn test` no terminal).
 4. Execute a classe principal `ApiApplication.java`.
 
-> 💡 **População Automática do Banco:** Na primeira inicialização, a API utiliza a classe `CommandLineRunner` configurada para criar automaticamente a estrutura de tabelas, o relacionamento `@ManyToMany`, além de inserir ecopontos e categorias de resíduos iniciais de teste caso o banco esteja vazio.
-
 Para verificar se a API está respondendo, abra o navegador e acesse:
 `http://localhost:8080/api/pontos`
 
