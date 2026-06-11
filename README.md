@@ -57,6 +57,6 @@ Com o dispositivo físico (conectado via USB) ou emulador pronto:
 1. Abra o projeto mobile no seu terminal ou editor.
 2. Atualize o arquivo `lib/ponto_service.dart` alterando a variável `apiUrl` com o **IP local da sua máquina** na rede Wi-Fi (ex: `http://192.168.X.X:8080/api/pontos`), garantindo que o celular e o computador estejam na mesma rede.
 3. Instale as dependências executando:
-```bash ```
-   flutter pub get
-   flutter run --no-impeller
+```bash
+flutter pub get
+flutter run --no-impeller
