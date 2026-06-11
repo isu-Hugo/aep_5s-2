@@ -21,12 +21,27 @@ class _MapaMockScreenState extends State<MapaMockScreen> {
   }
 
   void _atualizarPontosDoServidor() async {
-    var pontosDoBanco = await _pontoService.buscarPontos();
+  try {
+    // Define um tempo limite de 3 segundos para a resposta do servidor
+    var pontosDoBanco = await _pontoService.buscarPontos().timeout(
+      Duration(seconds: 3),
+      onTimeout: () {
+        print("Tempo limite de conexão esgotado!");
+        return []; // Retorna lista vazia se estourar o tempo
+      },
+    );
+
     setState(() {
       _pontos = pontosDoBanco;
       _carregando = false;
     });
+  } catch (e) {
+    print("Erro capturado na inicialização: $e");
+    setState(() {
+      _carregando = false; // Desliga o carregando para mostrar a interface
+    });
   }
+}
 
   // Simulação da regra de negócio: Adicionar pontos ao coletar material
   void _realizarColetaSimulada() {

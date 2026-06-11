@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'ponto_service.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class HomePage extends StatefulWidget {
   @override
@@ -9,6 +10,22 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin {
   final PontoService _pontoService = PontoService();
   late TabController _tabController;
+
+  void _abrirMapaNativo(double latitude, double longitude) async {
+    // Cria o link universal de mapas suportado nativamente pelo Android e iOS
+    final String googleMapsUrl = "https://www.google.com/maps/search/?api=1&query=$latitude,$longitude";
+    final Uri url = Uri.parse(googleMapsUrl);
+
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url, mode: LaunchMode.externalApplication); // Dispara o GPS nativo do telemóvel
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Não foi possível abrir o mapa nativo.")),
+        );
+      }
+    }
+  }
   
   // Estados da Aplicação
   List<dynamic> _pontos = [];
@@ -27,19 +44,35 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
   }
 
   void _buscarDadosDoBackend() async {
-    var dados = await _pontoService.buscarPontos();
-    setState(() {
-      _pontos = dados;
-      _carregando = false;
-    });
+    try {
+      var dados = await _pontoService.buscarPontos().timeout(
+        Duration(seconds: 3),
+        onTimeout: () {
+          print("Tempo limite esgotado ao conectar ao Spring Boot!");
+          return [];
+        },
+      );
+      if (mounted) {
+        setState(() {
+          _pontos = dados;
+          _carregando = false;
+        });
+      }
+    } catch (e) {
+      print("Erro ao buscar dados: $e");
+      if (mounted) {
+        setState(() {
+          _carregando = false;
+        });
+      }
+    }
   }
 
-  // Simulação do cálculo de pontos (O algoritmo que você cita no relatório)
+  // Simulação do cálculo de pontos (Padrão Strategy)
   void _calcularEAdicionarPontos() {
     int qtd = int.tryParse(_quantidadeController.text) ?? 1;
     int multiplicador = 10; // Padrão base
 
-    // Simulação das estratégias por tipo de material
     if (_categoriaSelecionada == 'Plástico') multiplicador = 20;
     if (_categoriaSelecionada == 'Metal') multiplicador = 30;
     if (_categoriaSelecionada == 'Vidro') multiplicador = 15;
@@ -75,7 +108,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
       ),
       body: Column(
         children: [
-          // BANNER FIXO DE PONTUAÇÃO DO UTILIZADOR (Garante feedback visual constante)
+          // BANNER FIXO DE PONTUAÇÃO DO UTILIZADOR
           Container(
             padding: EdgeInsets.all(16),
             color: Colors.green.shade50,
@@ -91,53 +124,103 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
             ),
           ),
           
-          // CONTEÚDO DAS ABAS
+          // CONTEÚDO DAS ABAS (CORRIGIDO: Agora possui exatamente 3 filhos estruturados)
           Expanded(
             child: TabBarView(
               controller: _tabController,
               children: [
-                // ABA 1: MAPA / LISTA DE ECOPONTOS (INTEGRAÇÃO COM BACKEND)
-                _carregando 
-                  ? Center(child: CircularProgressIndicator())
-                  : _pontos.isEmpty
-                    ? Center(child: Text("Nenhum ecoponto ativo no servidor."))
-                    : ListView.builder(
-                        itemCount: _pontos.length,
-                        itemBuilder: (context, index) {
-                          final ponto = _pontos[index];
-                          return Card(
-                            margin: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                            child: ListTile(
-                              leading: Icon(Icons.location_on, color: Colors.green, size: 36),
-                              title: Text(ponto['nomeLocal'] ?? 'Ecoponto'),
-                              subtitle: Text("${ponto['endereco']}\nHorário: ${ponto['horarioFuncionamento'] ?? 'Não informado'}"),
-                              trailing: Icon(Icons.arrow_forward_ios, size: 16),
-                              onTap: () {
-                                // Exibe um modal rápido com detalhes (Cumpre regras de IHC)
-                                showModalBottomSheet(
-                                  context: context,
-                                  builder: (context) => Container(
-                                    padding: EdgeInsets.all(20),
-                                    child: Column(
+                
+                // ================= ABA 1: ECOPONTOS (CONEXÃO BACKEND) =================
+                Column(
+                  children: [
+                    // A barra de pesquisa agora divide o espaço corretamente dentro da coluna
+                    Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: TextField(
+                        decoration: InputDecoration(
+                          hintText: "Digite o objeto (ex: lâmpada, pilha, plástico)...",
+                          prefixIcon: Icon(Icons.search, color: Colors.green),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: _carregando 
+                        ? Center(child: CircularProgressIndicator())
+                        : _pontos.isEmpty
+                          ? Center(child: Text("Nenhum ecoponto ativo no servidor."))
+                          : ListView.builder(
+                              itemCount: _pontos.length,
+                              itemBuilder: (context, index) {
+                                final ponto = _pontos[index];
+                                return Card(
+                                  margin: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                  child: ListTile(
+                                    leading: Icon(Icons.location_on, color: Colors.green, size: 36),
+                                    title: Text(ponto['nomeLocal'] ?? 'Ecoponto'),
+                                    subtitle: Column(
                                       crossAxisAlignment: CrossAxisAlignment.start,
-                                      mainAxisSize: MainAxisSize.min,
                                       children: [
-                                        Text(ponto['nomeLocal'], style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.green)),
-                                        SizedBox(height: 10),
-                                        Text("📍 Endereço: ${ponto['endereco']}"),
-                                        Text("⏰ Funcionamento: ${ponto['horarioFuncionamento']}"),
-                                        Text("🌐 Coordenadas: ${ponto['latitude']}, ${ponto['longitude']}"),
+                                        SizedBox(height: 4),
+                                        Text("📍 ${ponto['endereco']}"),
+                                        Text("⏰ Horário: ${ponto['horarioFuncionamento'] ?? 'Não informado'}"),
+                                        SizedBox(height: 8),
+                                        Row(
+                                          children: [
+                                            _buildOdsChip("ODS 11", Colors.orange),
+                                            SizedBox(width: 5),
+                                            _buildOdsChip("ODS 3", Colors.red.shade700),
+                                            SizedBox(width: 5),
+                                            _buildOdsChip("ODS 12", Colors.green.shade700),
+                                          ],
+                                        ),
                                       ],
                                     ),
+                                    trailing: Icon(Icons.arrow_forward_ios, size: 16),
+                                    onTap: () {
+                                      showModalBottomSheet(
+                                        context: context,
+                                        builder: (context) => Container(
+                                          padding: EdgeInsets.all(20),
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Text(ponto['nomeLocal'], style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.green)),
+                                              SizedBox(height: 10),
+                                              Text("📍 Endereço: ${ponto['endereco']}"),
+                                              Text("⏰ Funcionamento: ${ponto['horarioFuncionamento']}"),
+                                              Text("🌐 Coordenadas: ${ponto['latitude']}, ${ponto['longitude']}"),
+                                              SizedBox(height: 15),
+                                              SizedBox(
+                                                width: double.infinity,
+                                                child: ElevatedButton.icon(
+                                                  icon: Icon(Icons.navigation, color: Colors.white),
+                                                  label: Text("Rota até o Ecoponto", style: TextStyle(color: Colors.white)),
+                                                  style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
+                                                  onPressed: () {
+                                                    Navigator.pop(context);
+                                                    _abrirMapaNativo(
+                                                      double.tryParse(ponto['latitude'].toString()) ?? 0.0, 
+                                                      double.tryParse(ponto['longitude'].toString()) ?? 0.0
+                                                    );
+                                                  },
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      );
+                                    },
                                   ),
                                 );
                               },
                             ),
-                          );
-                        },
-                      ),
+                    ),
+                  ],
+                ),
 
-                // ABA 2: FORMULÁRIO DE DESCARTE (SIMULAÇÃO DE REGRA DE NEGÓCIO)
+                // ================= ABA 2: FORMULÁRIO DE DESCARTE =================
                 Padding(
                   padding: const EdgeInsets.all(20.0),
                   child: Column(
@@ -177,7 +260,7 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
                   ),
                 ),
 
-                // ABA 3: CONTEÚDO INFORMATIVO (REQUISITO DAS ODS 12)
+                // ================= ABA 3: CONTEÚDO INFORMATIVO =================
                 ListView(
                   padding: EdgeInsets.all(12),
                   children: [
@@ -217,6 +300,24 @@ class _HomePageState extends State<HomePage> with SingleTickerProviderStateMixin
               ),
             )
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOdsChip(String texto, Color cor) {
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: cor, 
+        borderRadius: BorderRadius.circular(5),
+      ),
+      child: Text(
+        texto, 
+        style: TextStyle(
+          color: Colors.white, 
+          fontSize: 10, 
+          fontWeight: FontWeight.bold,
         ),
       ),
     );
